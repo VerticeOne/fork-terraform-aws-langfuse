@@ -3,7 +3,7 @@ locals {
 
   create_vpc           = var.vpc_id == null || var.private_subnets == null || var.vpc_cidr_block == null  ? true : false
   private_subnets_list = (local.create_vpc == false && var.private_subnets != null) ? var.private_subnets : []
-  public_subnets_list  = (local.create_vpc == false && var.public_subnets != null) ? var.public_subnets : []
+  public_subnets_list  = (!local.create_vpc && var.public_subnets != null) ? var.public_subnets : []
   vpc_id               = local.create_vpc ? module.vpc[0].vpc_id : var.vpc_id
   private_subnets      = local.create_vpc ? module.vpc[0].private_subnets : local.private_subnets_list
   public_subnets       = local.create_vpc ? module.vpc[0].public_subnets : local.public_subnets_list
