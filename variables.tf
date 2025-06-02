@@ -107,7 +107,7 @@ variable "vpc_cidr_block" {
 variable "cache_engine_type" {
   description = "The type of cache engine to deploy. Valid values are 'redis' or 'valkey'."
   type        = string
-  default     = "valkey" # Default to Redis
+  default     = "valkey"
 
   validation {
     condition     = contains(["redis", "valkey"], var.cache_engine_type)
