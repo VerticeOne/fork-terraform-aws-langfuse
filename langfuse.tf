@@ -86,7 +86,7 @@ langfuse:
       name: ${kubernetes_secret.langfuse.metadata[0].name}
       key: encryption_key
 EOT
-  okta_values       = var.enable_okta == false ? "" : <<EOT
+  okta_values       = !var.enable_okta ? "" : <<EOT
 langfuse:
   auth:
     providers:
