@@ -98,7 +98,7 @@ resource "aws_elasticache_replication_group" "cache" {
 
   lifecycle {
     ignore_changes = [
-       engine_version, # If you want to manage engine version upgrades outside of apply, or if minor versions change
+      engine_version, # If you want to manage engine version upgrades outside of apply, or if minor versions change
     ]
   }
 }

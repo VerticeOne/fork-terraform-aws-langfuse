@@ -10,7 +10,7 @@ locals {
 
 # ACM Certificate for the domain
 resource "aws_acm_certificate" "cert" {
-  count = var.public_endpoint ? 1 : 0
+  count             = var.public_endpoint ? 1 : 0
   domain_name       = var.domain
   validation_method = "DNS"
 
@@ -31,7 +31,7 @@ resource "aws_acm_certificate" "cert" {
 # Create Route53 zone for the domain
 resource "aws_route53_zone" "public_zone" {
   count = var.public_endpoint ? 1 : 0
-  name = var.domain
+  name  = var.domain
 
   tags = {
     Name = local.tag_name
@@ -52,14 +52,14 @@ resource "aws_route53_record" "cert_validation" {
 
 # Certificate validation
 resource "aws_acm_certificate_validation" "cert" {
-  count = var.public_endpoint ? 1 : 0
+  count                   = var.public_endpoint ? 1 : 0
   certificate_arn         = aws_acm_certificate.cert[0].arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
 # Create Route53 record for the ALB
 resource "aws_route53_record" "langfuse_public" {
-  count = var.public_endpoint ? 1 : 0
+  count   = var.public_endpoint ? 1 : 0
   zone_id = aws_route53_zone.public_zone[0].zone_id
   name    = var.domain
   type    = "A"

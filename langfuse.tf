@@ -3,7 +3,7 @@ locals {
   ingress_subnets   = var.public_endpoint ? join(",", local.public_subnets) : join(",", local.private_subnets)
   resource_settings = yamlencode(var.resource_settings)
 
-  langfuse_values = <<EOT
+  langfuse_values   = <<EOT
 global:
   defaultStorageClass: efs
 langfuse:
@@ -59,7 +59,7 @@ s3:
   mediaUpload:
     prefix: "media/"
 EOT
-  ingress_values  = <<EOT
+  ingress_values    = <<EOT
 langfuse:
   ingress:
     enabled: true
@@ -86,7 +86,7 @@ langfuse:
       name: ${kubernetes_secret.langfuse.metadata[0].name}
       key: encryption_key
 EOT
-  okta_values = var.enable_okta == false ? "" : <<EOT
+  okta_values       = var.enable_okta == false ? "" : <<EOT
 langfuse:
   auth:
     providers:
@@ -109,7 +109,7 @@ data "aws_secretsmanager_secret" "langfuse_secrets" {
 }
 
 data "aws_secretsmanager_secret_version" "langfuse_secrets_version" {
-  count = var.okta_settings != null ? 1 : 0
+  count     = var.okta_settings != null ? 1 : 0
   secret_id = data.aws_secretsmanager_secret.langfuse_secrets[0].id
 }
 
@@ -148,9 +148,9 @@ resource "kubernetes_secret" "langfuse" {
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = random_password.clickhouse_password.result
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
-  },
-  var.enable_okta ? {
-    "okta-client-secret" = data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string
+    },
+    var.enable_okta ? {
+      "okta-client-secret" = data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string
   } : {})
 }
 

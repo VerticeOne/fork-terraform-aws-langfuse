@@ -7,7 +7,7 @@ locals {
 }
 
 module "vpc" {
-  count = local.create_vpc ? 1 : 0
+  count   = local.create_vpc ? 1 : 0
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
 
@@ -95,28 +95,28 @@ resource "aws_security_group" "vpc_endpoints" {
 }
 
 resource "aws_ec2_tag" "subnet_tag_internal_elb" {
-  for_each = toset(local.private_subnets_list)
+  for_each    = toset(local.private_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/role/internal-elb"
   value       = "1"
 }
 
 resource "aws_ec2_tag" "subnet_tag_cluster_private" {
-  for_each = toset(local.private_subnets_list)
+  for_each    = toset(local.private_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/cluster/${var.name}"
   value       = "shared"
 }
 
 resource "aws_ec2_tag" "subnet_tag_elb" {
-  for_each = toset(local.public_subnets_list)
+  for_each    = toset(local.public_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/role/elb"
   value       = "1"
 }
 
 resource "aws_ec2_tag" "subnet_tag_cluster_public" {
-  for_each = toset(local.public_subnets_list)
+  for_each    = toset(local.public_subnets_list)
   resource_id = each.value
   key         = "kubernetes.io/cluster/${var.name}"
   value       = "shared"
