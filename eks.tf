@@ -158,14 +158,18 @@ resource "aws_cloudwatch_log_group" "eks" {
 }
 
 resource "aws_eks_access_entry" "admin_role_access" {
+  for_each = toset(var.eks_admin_role_arn)
+
   cluster_name  = aws_eks_cluster.langfuse.name
-  principal_arn = var.eks_admin_role_arn
+  principal_arn = each.key
   type          = "STANDARD" # Or FARGATE_LINUX, etc.
 }
 
 resource "aws_eks_access_policy_association" "admin_policy_association" {
+  for_each = toset(var.eks_admin_role_arn)
+
   cluster_name  = aws_eks_cluster.langfuse.name
-  principal_arn = var.eks_admin_role_arn
+  principal_arn = each.key
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # Predefined admin policy
   access_scope {
     type = "cluster" # Or "namespace" for namespace-scoped permissions
