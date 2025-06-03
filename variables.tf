@@ -117,7 +117,7 @@ variable "cache_engine_type" {
 
 variable "eks_admin_role_arn" {
   description = "The ARN of the AgentAdmin IAM role to grant EKS admin access."
-  type        = string
+  type        = list(string)
 }
 
 variable "public_endpoint" {
