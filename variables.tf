@@ -78,3 +78,96 @@ variable "use_single_nat_gateway" {
   type        = bool
   default     = false
 }
+
+variable "vpc_id" {
+  description = "VPC ID to use for the cluster, overrides the VPC CIDR"
+  type        = string
+  default     = null
+}
+
+variable "private_subnets" {
+  description = "Private subnets in which to create the cluster"
+  type        = list(string)
+  default     = null
+}
+
+variable "public_subnets" {
+  description = "Public subnets in which to create the cluster"
+  type        = list(string)
+  default     = null
+}
+
+variable "vpc_cidr_block" {
+  description = "VPC CIDR block to use for the cluster, overrides the VPC CIDR"
+  type        = string
+  default     = null
+}
+
+# Define an input variable to choose the cache engine
+variable "cache_engine_type" {
+  description = "The type of cache engine to deploy. Valid values are 'redis' or 'valkey'."
+  type        = string
+  default     = "valkey"
+
+  validation {
+    condition     = contains(["redis", "valkey"], var.cache_engine_type)
+    error_message = "Allowed values for cache_engine_type are 'redis' or 'valkey'."
+  }
+}
+
+variable "eks_admin_role_arn" {
+  description = "The ARN of the AgentAdmin IAM role to grant EKS admin access."
+  type        = list(string)
+}
+
+variable "public_endpoint" {
+  description = "Public endpoint for langfuse"
+  type        = bool
+  default     = true
+}
+
+variable "public_zone" {
+  description = "Zone where to deploy the langfuse subdomain"
+  type        = string
+  default     = null
+}
+
+variable "enable_okta" {
+  description = "Enable SSO for the cluster"
+  type        = bool
+  default     = false
+}
+
+variable "okta_settings" {
+  description = "Okta settings for authentication."
+  type = object({
+    client_id                  = string
+    client_secret_secrets_name = string
+    issuer                     = string
+  })
+  default = null
+}
+
+variable "disable_username_password_authentication" {
+  description = "Disable integrated user/password authentication"
+  type        = bool
+  default     = false
+}
+
+variable "disable_signup" {
+  description = "Disable the ability to sign up for a new account."
+  type        = bool
+  default     = false
+}
+
+variable "langfuse_chart_version" {
+  description = "Version of Langfuse Helm Chart"
+  type        = string
+  default     = "1.2.12"
+}
+
+variable "resource_settings" {
+  description = "Resource settings (optional, but highly recommended, at least for web and zookeeper)"
+  type        = any
+  default     = {}
+}

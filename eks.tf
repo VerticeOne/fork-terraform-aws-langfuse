@@ -1,5 +1,5 @@
 data "aws_eks_cluster_auth" "langfuse" {
-  name = aws_eks_cluster.langfuse.name
+  name     = aws_eks_cluster.langfuse.name
 }
 
 resource "aws_eks_cluster" "langfuse" {
@@ -7,8 +7,12 @@ resource "aws_eks_cluster" "langfuse" {
   role_arn = aws_iam_role.eks.arn
   version  = var.kubernetes_version
 
+  access_config {
+    authentication_mode = "API_AND_CONFIG_MAP"
+  }
+
   vpc_config {
-    subnet_ids              = module.vpc.private_subnets
+    subnet_ids              = local.private_subnets
     endpoint_private_access = true
     endpoint_public_access  = true
     security_group_ids      = [aws_security_group.eks.id]
@@ -77,7 +81,7 @@ resource "aws_eks_fargate_profile" "namespaces" {
   cluster_name           = aws_eks_cluster.langfuse.name
   fargate_profile_name   = "${var.name}-${each.value}"
   pod_execution_role_arn = aws_iam_role.fargate.arn
-  subnet_ids             = module.vpc.private_subnets
+  subnet_ids             = local.private_subnets
 
   selector {
     namespace = each.value
@@ -91,7 +95,7 @@ resource "aws_eks_fargate_profile" "namespaces" {
 resource "aws_security_group" "eks" {
   name        = "${var.name}-eks"
   description = "Security group for Langfuse EKS cluster"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc_id
 
   tags = {
     Name = "${local.tag_name} EKS"
@@ -112,7 +116,7 @@ resource "aws_security_group_rule" "eks_vpc" {
   from_port         = 0
   to_port           = 65535
   protocol          = "tcp"
-  cidr_blocks       = [module.vpc.vpc_cidr_block]
+  cidr_blocks       = [local.vpc_cidr_block]
   security_group_id = aws_security_group.eks.id
 }
 
@@ -150,4 +154,25 @@ resource "aws_iam_role_policy_attachment" "eks_service_policy" {
 resource "aws_cloudwatch_log_group" "eks" {
   name              = "/aws/eks/${var.name}/cluster"
   retention_in_days = 30
-} 
+}
+
+resource "aws_eks_access_entry" "admin_role_access" {
+  for_each = toset(var.eks_admin_role_arn)
+
+  cluster_name  = aws_eks_cluster.langfuse.name
+  principal_arn = each.key
+  type          = "STANDARD" # Or FARGATE_LINUX, etc.
+}
+
+resource "aws_eks_access_policy_association" "admin_policy_association" {
+  for_each = toset(var.eks_admin_role_arn)
+
+  cluster_name  = aws_eks_cluster.langfuse.name
+  principal_arn = each.key
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # Predefined admin policy
+  access_scope {
+    type = "cluster" # Or "namespace" for namespace-scoped permissions
+  }
+
+  depends_on = [aws_eks_access_entry.admin_role_access]
+}

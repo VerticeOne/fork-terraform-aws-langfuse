@@ -1,5 +1,9 @@
 locals {
-  langfuse_values = <<EOT
+  ingress_scheme    = var.public_endpoint ? "internet-facing" : "internal"
+  ingress_subnets   = var.public_endpoint ? join(",", local.public_subnets) : join(",", local.private_subnets)
+  resource_settings = yamlencode(var.resource_settings)
+
+  langfuse_values   = <<EOT
 global:
   defaultStorageClass: efs
 langfuse:
@@ -35,9 +39,10 @@ clickhouse:
   auth:
     existingSecret: langfuse
     existingSecretKey: clickhouse-password
+  replicaCount: ${var.clickhouse_instance_count}
 redis:
   deploy: false
-  host: ${aws_elasticache_replication_group.redis.primary_endpoint_address}
+  host: ${aws_elasticache_replication_group.cache.primary_endpoint_address}
   auth:
     existingSecret: langfuse
     existingSecretPasswordKey: redis-password
@@ -55,21 +60,25 @@ s3:
   mediaUpload:
     prefix: "media/"
 EOT
-  ingress_values  = <<EOT
+  ingress_values    = <<EOT
 langfuse:
   ingress:
     enabled: true
     className: alb
     annotations:
-      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/scheme: ${local.ingress_scheme}
       alb.ingress.kubernetes.io/target-type: 'ip'
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
       alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/subnets: ${local.ingress_subnets}
     hosts:
     - host: ${var.domain}
       paths:
       - path: /
         pathType: Prefix
+  auth:
+    disableUsernamePassword: ${var.disable_username_password_authentication}
+    disableSignup: ${var.disable_signup}
 EOT
   encryption_values = var.use_encryption_key == false ? "" : <<EOT
 langfuse:
@@ -78,6 +87,31 @@ langfuse:
       name: ${kubernetes_secret.langfuse.metadata[0].name}
       key: encryption_key
 EOT
+  okta_values       = !var.enable_okta ? "" : <<EOT
+langfuse:
+  auth:
+    providers:
+      okta:
+        clientId: ${var.okta_settings.client_id}
+        issuer: ${var.okta_settings.issuer}
+        checks: state
+  additionalEnv:
+    - name: AUTH_OKTA_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: langfuse
+          key: okta-client-secret
+EOT
+}
+
+data "aws_secretsmanager_secret" "langfuse_secrets" {
+  count = var.okta_settings != null ? 1 : 0
+  name  = var.okta_settings.client_secret_secrets_name
+}
+
+data "aws_secretsmanager_secret_version" "langfuse_secrets_version" {
+  count     = var.okta_settings != null ? 1 : 0
+  secret_id = data.aws_secretsmanager_secret.langfuse_secrets[0].id
 }
 
 resource "kubernetes_namespace" "langfuse" {
@@ -108,27 +142,34 @@ resource "kubernetes_secret" "langfuse" {
     namespace = "langfuse"
   }
 
-  data = {
-    "redis-password"      = random_password.redis_password.result
+  data = merge({
+    "redis-password"      = random_password.cache_password.result
     "postgres-password"   = random_password.postgres_password.result
     "salt"                = random_bytes.salt.base64
     "nextauth-secret"     = random_bytes.nextauth_secret.base64
     "clickhouse-password" = random_password.clickhouse_password.result
     "encryption_key"      = var.use_encryption_key ? random_bytes.encryption_key[0].hex : ""
-  }
+    },
+    var.enable_okta ? {
+      "okta-client-secret" = data.aws_secretsmanager_secret_version.langfuse_secrets_version[0].secret_string
+  } : {})
 }
 
 resource "helm_release" "langfuse" {
   name             = "langfuse"
   repository       = "https://langfuse.github.io/langfuse-k8s"
-  version          = "1.1.0"
+  version          = var.langfuse_chart_version
   chart            = "langfuse"
   namespace        = "langfuse"
   create_namespace = true
+  timeout          = 600
 
   values = [
     local.langfuse_values,
     local.ingress_values,
+    local.encryption_values,
+    local.okta_values,
+    local.resource_settings
   ]
 
   depends_on = [

@@ -323,12 +323,26 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "vpcId"
-    value = module.vpc.vpc_id
+    value = local.vpc_id
   }
 
   depends_on = [
     kubernetes_service_account.aws_load_balancer_controller,
     aws_iam_role.aws_load_balancer_controller,
     aws_eks_fargate_profile.namespaces,
+  ]
+}
+
+# Get the ALB details
+data "aws_lb" "ingress" {
+  tags = {
+    "elbv2.k8s.aws/cluster"    = var.name
+    "ingress.k8s.aws/stack"    = "langfuse/langfuse"
+    "ingress.k8s.aws/resource" = "LoadBalancer"
+  }
+
+  depends_on = [
+    helm_release.aws_load_balancer_controller,
+    helm_release.langfuse
   ]
 }
