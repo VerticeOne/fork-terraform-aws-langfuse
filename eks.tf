@@ -1,5 +1,4 @@
 data "aws_eks_cluster_auth" "langfuse" {
-  provider = aws.eks_admin_role
   name     = aws_eks_cluster.langfuse.name
 }
 

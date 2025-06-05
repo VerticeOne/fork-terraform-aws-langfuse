@@ -39,6 +39,7 @@ clickhouse:
   auth:
     existingSecret: langfuse
     existingSecretKey: clickhouse-password
+  replicaCount: ${var.clickhouse_instance_count}
 redis:
   deploy: false
   host: ${aws_elasticache_replication_group.cache.primary_endpoint_address}
